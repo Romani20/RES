@@ -80,40 +80,79 @@ def calculate_background_frequency(sequences):
     dictf = {i: dictbg[i] / dictbg["total"] for i in vals}
     return dictf
 
-def calculate_position_score(sequence, pwm, background_freq, gap_open_penalty=14, gap_extend_penalty=3):
-    """_summary_
+# def calculate_position_score(sequence, pwm, background_freq, gap_open_penalty=14, gap_extend_penalty=3):
+#     """_summary_
+
+#     Args:
+#         sequence (_type_): _description_
+#         pwm (_type_): _description_
+#         background_freq (_type_): _description_
+#         gap_open_penalty (int, optional): _description_. Defaults to 14.
+#         gap_extend_penalty (int, optional): _description_. Defaults to 3.
+
+#     Returns:
+#         _type_: _description_
+#     """
+#     num_sequences = len(sequence)
+#     scores = []
+
+#     for i in range(num_sequences):
+#         score = 0.0
+#         gap_opened = False 
+
+#         nucleotide = sequence[i]
+#         if nucleotide == '-':
+#             if not gap_opened:
+#                 score -= gap_open_penalty
+#                 gap_opened = True  
+#             else:
+#                 score -= gap_extend_penalty
+#         else:
+#             gap_opened = False
+#             if nucleotide in pwm and nucleotide in background_freq:
+#                 if pwm[nucleotide][i] > 0 and background_freq[nucleotide] > 0:
+#                     score += math.log2(pwm[nucleotide][i] / background_freq[nucleotide])
+#         scores.append(score)
+#         print(f"Score for segment {i+1}: {score}")
+#     return scores
+
+def calculate_position_score(sequence, pwm, background_freq, gap_open_penalty=2.90, gap_extend_penalty=0):
+    """Calculates the position-specific score for a sequence using a PWM and background frequency.
 
     Args:
-        sequence (_type_): _description_
-        pwm (_type_): _description_
-        background_freq (_type_): _description_
-        gap_open_penalty (int, optional): _description_. Defaults to 14.
-        gap_extend_penalty (int, optional): _description_. Defaults to 3.
+        sequence (str): The nucleotide sequence to be scored.
+        pwm (dict): Position Weight Matrix (PWM) for nucleotides.
+        background_freq (dict): Background frequencies for nucleotides.
+        gap_open_penalty (int, optional): Penalty for opening a gap. Defaults to 14.
+        gap_extend_penalty (int, optional): Penalty for extending an existing gap. Defaults to 3.
 
     Returns:
-        _type_: _description_
+        list: List of scores for each position in the sequence.
     """
-    num_sequences = len(sequence)
+    num_positions = len(sequence)
     scores = []
 
-    for i in range(num_sequences):
+    gap_opened = False
+
+    for i in range(num_positions):
         score = 0.0
-        gap_opened = False 
 
         nucleotide = sequence[i]
         if nucleotide == '-':
             if not gap_opened:
                 score -= gap_open_penalty
-                gap_opened = True  
+                gap_opened = True
             else:
                 score -= gap_extend_penalty
         else:
             gap_opened = False
-            if nucleotide in pwm and nucleotide in background_freq:
+            if nucleotide in pwm and i < len(pwm[nucleotide]) and nucleotide in background_freq:
                 if pwm[nucleotide][i] > 0 and background_freq[nucleotide] > 0:
                     score += math.log2(pwm[nucleotide][i] / background_freq[nucleotide])
+
         scores.append(score)
-        print(f"Score for segment {i+1}: {score}")
+        print(f"Score for position {i + 1}: {score}")
+
     return scores
 
 
