@@ -6,65 +6,38 @@ from Bio import SeqIO
 vals = 'ACDEFGHIKLMNPQRSTVWY-'
 
 def fasta_to_array(fasta_file):
-    """_summary_
-
-    Args:
-        fasta_file (_type_): _description_
-
-    Returns:
-        _type_: _description_
+    """Converts a the sequences in an aligned fasta file 
+    to an array of strings.
     """
     sequences = []
     for record in SeqIO.parse(fasta_file, "fasta"):
         sequences.append(str(record.seq))
     return sequences
 
-def scores_to_dict(scores):
-    """_summary_
-
-    Args:
-        scores (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    aa_score_dict = {val: score for val, score in zip(vals, scores)}
-    return aa_score_dict
-
 def calculate_pwm(sequences, pseudocount=1):
-    """_summary_
-
-    Args:
-        sequences (_type_): _description_
-        pseudocount (int, optional): _description_. Defaults to 1.
-
-    Returns:
-        _type_: _description_
+    """Calculates a position weight matrix from array of aligned 
+    sequences.
     """
-    counts = {nucleotide: [0] * len(sequences[0]) for nucleotide in vals}
+    counts = {residue: [0] * len(sequences[0]) for residue in vals}
 
     for sequence in sequences:
-        for i, nucleotide in enumerate(sequence):
-            if nucleotide in counts:
-                counts[nucleotide][i] += 1
+        for i, residue in enumerate(sequence):
+            if residue in counts:
+                counts[residue][i] += 1
             else:
-                print(f"Warning: Found invalid character '{nucleotide}' in sequence. Skipping.")
+                print(f"Invalid character '{residue}' in sequence. Skipping.")
 
-    for nucleotide in counts:
-        for i in range(len(counts[nucleotide])):
-            counts[nucleotide][i] += pseudocount
+    for residue in counts:
+        for i in range(len(counts[residue])):
+            counts[residue][i] += pseudocount
 
-    pwm = {nucleotide: [count / (len(sequences) + pseudocount * len(counts)) for count in counts[nucleotide]] for nucleotide in counts}
+    pwm = {residue: [count / (len(sequences) + pseudocount * len(
+        counts)) for count in counts[residue]] for residue in counts}
     return pwm
 
 def calculate_background_frequency(sequences):
-    """_summary_
-
-    Args:
-        sequences (_type_): _description_
-
-    Returns:
-        _type_: _description_
+    """Calculates background frequency of each residue (or gap)
+    over the aligned sequences.
     """
     dictbg = {val: 0 for val in vals}
     dictbg["total"] = 0
@@ -75,59 +48,15 @@ def calculate_background_frequency(sequences):
                 dictbg[i] += 1
                 dictbg["total"] += 1
             else:
-                print(f"Warning: Found invalid character '{i}' in sequence. Skipping.")
+                print(f"Invalid character '{i}' in sequence. Skipping.")
 
     dictf = {i: dictbg[i] / dictbg["total"] for i in vals}
     return dictf
 
-# def calculate_position_score(sequence, pwm, background_freq, gap_open_penalty=14, gap_extend_penalty=3):
-#     """_summary_
-
-#     Args:
-#         sequence (_type_): _description_
-#         pwm (_type_): _description_
-#         background_freq (_type_): _description_
-#         gap_open_penalty (int, optional): _description_. Defaults to 14.
-#         gap_extend_penalty (int, optional): _description_. Defaults to 3.
-
-#     Returns:
-#         _type_: _description_
-#     """
-#     num_sequences = len(sequence)
-#     scores = []
-
-#     for i in range(num_sequences):
-#         score = 0.0
-#         gap_opened = False 
-
-#         nucleotide = sequence[i]
-#         if nucleotide == '-':
-#             if not gap_opened:
-#                 score -= gap_open_penalty
-#                 gap_opened = True  
-#             else:
-#                 score -= gap_extend_penalty
-#         else:
-#             gap_opened = False
-#             if nucleotide in pwm and nucleotide in background_freq:
-#                 if pwm[nucleotide][i] > 0 and background_freq[nucleotide] > 0:
-#                     score += math.log2(pwm[nucleotide][i] / background_freq[nucleotide])
-#         scores.append(score)
-#         print(f"Score for segment {i+1}: {score}")
-#     return scores
-
-def calculate_position_score(sequence, pwm, background_freq, gap_open_penalty=2.90, gap_extend_penalty=0):
-    """Calculates the position-specific score for a sequence using a PWM and background frequency.
-
-    Args:
-        sequence (str): The nucleotide sequence to be scored.
-        pwm (dict): Position Weight Matrix (PWM) for nucleotides.
-        background_freq (dict): Background frequencies for nucleotides.
-        gap_open_penalty (int, optional): Penalty for opening a gap. Defaults to 14.
-        gap_extend_penalty (int, optional): Penalty for extending an existing gap. Defaults to 3.
-
-    Returns:
-        list: List of scores for each position in the sequence.
+def calculate_position_score(
+        sequence, pwm, background_freq, gap_open_penalty=2.90, gap_extend_penalty=0):
+    """Calculates the position-specific score for a sequence 
+    using pwm and background frequency.
     """
     num_positions = len(sequence)
     scores = []
@@ -137,8 +66,8 @@ def calculate_position_score(sequence, pwm, background_freq, gap_open_penalty=2.
     for i in range(num_positions):
         score = 0.0
 
-        nucleotide = sequence[i]
-        if nucleotide == '-':
+        residue = sequence[i]
+        if residue == '-':
             if not gap_opened:
                 score -= gap_open_penalty
                 gap_opened = True
@@ -146,22 +75,19 @@ def calculate_position_score(sequence, pwm, background_freq, gap_open_penalty=2.
                 score -= gap_extend_penalty
         else:
             gap_opened = False
-            if nucleotide in pwm and i < len(pwm[nucleotide]) and nucleotide in background_freq:
-                if pwm[nucleotide][i] > 0 and background_freq[nucleotide] > 0:
-                    score += math.log2(pwm[nucleotide][i] / background_freq[nucleotide])
+            if residue in pwm and i < len(pwm[residue]) and residue in background_freq:
+                if pwm[residue][i] > 0 and background_freq[residue] > 0:
+                    score += math.log2(pwm[residue][i] / background_freq[residue])
 
         scores.append(score)
         print(f"Score for position {i + 1}: {score}")
 
     return scores
 
-
 def calculate_and_save_scores_to_excel(sequences, output_file):
-    """_summary_
-
-    Args:
-        sequences (_type_): _description_
-        output_file (_type_): _description_
+    """Calculate and write scores to Excel file, where each column
+    represents scores for an ortholog, and rows contain residue-wise 
+    scores.
     """
     pwm = calculate_pwm(sequences)
     background_freq = calculate_background_frequency(sequences)
@@ -171,11 +97,11 @@ def calculate_and_save_scores_to_excel(sequences, output_file):
         sequence_scores = calculate_position_score(sequence, pwm, background_freq)
         df[f'Sequence_{i+1}_scores'] = sequence_scores
     df.to_excel(output_file, index=False)
-    print(f"Scores saved to {output_file}")
+    print(f"Scoring completed.")
 
 def main():
-    parser = argparse.ArgumentParser(description='Calculate scores for sequences and save to an Excel file.')
-    parser.add_argument('fasta_file', type=str, help='Path to the FASTA file containing sequences')
+    parser = argparse.ArgumentParser(description='Calculate scores and write to Excel.')
+    parser.add_argument('fasta_file', type=str, help='Path to fasta file of aligned sequences')
     parser.add_argument('output_file', type=str, help='Path to the output Excel file')
     
     args = parser.parse_args()
